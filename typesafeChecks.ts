@@ -1,4 +1,7 @@
-export const REFERENCE_PATTERN =/`([^`\s.]+(?:\.[^`\s.]+)*)`/g;
+// export const REFERENCE_PATTERN =/`([^`\s.]+(?:\.[^`\s.]+)*)`/g;
+// ponytail: a literal backslash then a real backtick (`\\` + backtick in the parsed value) counts as escaped.
+export const REFERENCE_PATTERN = /(?<!\\)`([^`\s.]+(?:\.[^`\s.]+)*)`/g;
+const UNESCAPED_BACKTICK = /(?<!\\)`/;
 const KEY_PATH_STEP = /\[\d+\]|[^.[\]]+/g;
 const QUESTION_TYPES = ['noul', 'choice', 'score', 'box'];
 const CHOICE_MAX_OPTIONS = 255;
@@ -58,7 +61,8 @@ export function findNestedPathValue(root: unknown, path: string): PathLookup {
 }
 
 export function findReferenceValue(state: unknown, question: unknown, name: string): PathLookup {
-  const stateLookup = findNestedPathValue(state, name);
+  // const stateLookup = findNestedPathValue(state, name);
+  const stateLookup = findPathValue(state, name);
   if (stateLookup.isFound)
     return stateLookup;
   return findNestedPathValue(question, name);
@@ -68,10 +72,17 @@ export function findReferenceError(state: unknown, question: unknown, name: stri
   const referenceLookup = findReferenceValue(state, question, name);
   if (!referenceLookup.isFound)
     return `\`${name}\` is not in state or in this question`;
-  if (typeof referenceLookup.value !== 'string')
-    return `\`${name}\` must point to text`;
-  if (referenceLookup.value.includes('`'))
-    return `\`${name}\` points to text with backticks; TypeSafe resolves only one level`;
+  // if (typeof referenceLookup.value !== 'string')
+  //   return `\`${name}\` must point to text`;
+  if (typeof referenceLookup.value === 'object') {
+    if (referenceLookup.value !== null)
+      return `\`${name}\` must not point to an object or array`;
+  }
+  if (typeof referenceLookup.value === 'string') {
+    // if (referenceLookup.value.includes('`'))
+    if (UNESCAPED_BACKTICK.test(referenceLookup.value))
+      return `\`${name}\` points to text with backticks; TypeSafe resolves only one level`;
+  }
   return null;
 }
 

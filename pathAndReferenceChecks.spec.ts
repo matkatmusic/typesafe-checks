@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test';
-import { splitKeyPath, findPathValue, findNestedPathValue, findReferenceValue, findReferenceError, listBacktickedKeys, listUndefinedReferences } from './typesafeChecks';
+import { splitKeyPath, findPathValue, findNestedPathValue, findReferenceValue, findReferenceError, listBacktickedKeys, listUndefinedReferences, collectReferenceNames } from './typesafeChecks';
 
 function assertSplitKeyPathSplitsKeysAndIndexes() {
   // A path with keys and one index splits into one step per key and per index.
@@ -110,6 +110,69 @@ function assertFindReferenceValueWithoutQuestionChecksStateOnly() {
 }
 test('test_find_reference_value_without_question_checks_state_only', assertFindReferenceValueWithoutQuestionChecksStateOnly);
 
+function assertFindReferenceValueRefusesNestedStateKeyWithoutParentPath() {
+  // The state has text inside an object. The name is only the inner key.
+  const state = { message: { text: 'hi' } };
+  // The state lookup is anchored at the top level, so the inner key is not found.
+  expect(findReferenceValue(state, undefined, 'text')).toEqual({ isFound: false });
+}
+test('test_find_reference_value_refuses_nested_state_key_without_parent_path', assertFindReferenceValueRefusesNestedStateKeyWithoutParentPath);
+
+function assertFindReferenceValueFindsDottedStatePath() {
+  // The state has text inside an object.
+  const state = { message: { text: 'hi' } };
+  // The dotted path from the top level is found.
+  expect(findReferenceValue(state, undefined, 'message.text')).toEqual({ isFound: true, value: 'hi' });
+}
+test('test_find_reference_value_finds_dotted_state_path', assertFindReferenceValueFindsDottedStatePath);
+
+function assertFindReferenceValueFindsIndexedStatePath() {
+  // The state has a list of objects with text.
+  const state = { messages: [{ text: 'hi' }] };
+  // The path with an index step is found.
+  expect(findReferenceValue(state, undefined, 'messages[0].text')).toEqual({ isFound: true, value: 'hi' });
+}
+test('test_find_reference_value_finds_indexed_state_path', assertFindReferenceValueFindsIndexedStatePath);
+
+function assertFindReferenceValueFindsNestedQuestionKeyAtAnyDepth() {
+  // The question has the inner key two levels down in its instructions.
+  const question = { type: 'noul', instructions: { details: { secretWord: 'banana' } } };
+  // The question lookup still goes down to any depth.
+  expect(findReferenceValue({}, question, 'secretWord')).toEqual({ isFound: true, value: 'banana' });
+}
+test('test_find_reference_value_finds_nested_question_key_at_any_depth', assertFindReferenceValueFindsNestedQuestionKeyAtAnyDepth);
+
+function assertFindReferenceErrorPassesNumber() {
+  // The name points to a number.  No error.
+  expect(findReferenceError({ count: 3 }, undefined, 'count')).toBeNull();
+}
+test('test_find_reference_error_passes_number', assertFindReferenceErrorPassesNumber);
+
+function assertFindReferenceErrorPassesBoolean() {
+  // The names point to true and false.  No error.
+  expect(findReferenceError({ isOn: true, isOff: false }, undefined, 'isOn')).toBeNull();
+  expect(findReferenceError({ isOn: true, isOff: false }, undefined, 'isOff')).toBeNull();
+}
+test('test_find_reference_error_passes_boolean', assertFindReferenceErrorPassesBoolean);
+
+function assertFindReferenceErrorPassesNull() {
+  // The name points to null.  No error.
+  expect(findReferenceError({ nothing: null }, undefined, 'nothing')).toBeNull();
+}
+test('test_find_reference_error_passes_null', assertFindReferenceErrorPassesNull);
+
+function assertFindReferenceErrorRefusesArray() {
+  // The name points to a list.  The error says the name must not point to an object or array.
+  expect(findReferenceError({ items: ['a'] }, undefined, 'items')).toBe('`items` must not point to an object or array');
+}
+test('test_find_reference_error_refuses_array', assertFindReferenceErrorRefusesArray);
+
+function assertFindReferenceErrorReportsNestedStateKeyWithoutParentPath() {
+  // The state has the key only inside an object.  The error says the name is missing.
+  expect(findReferenceError({ message: { text: 'hi' } }, undefined, 'text')).toBe('`text` is not in state or in this question');
+}
+test('test_find_reference_error_reports_nested_state_key_without_parent_path', assertFindReferenceErrorReportsNestedStateKeyWithoutParentPath);
+
 function assertFindReferenceErrorPassesPlainText() {
   // The name points to text with no backtick.  No error.
   expect(findReferenceError({ fruit: 'apple' }, undefined, 'fruit')).toBeNull();
@@ -122,11 +185,17 @@ function assertFindReferenceErrorReportsMissingName() {
 }
 test('test_find_reference_error_reports_missing_name', assertFindReferenceErrorReportsMissingName);
 
-function assertFindReferenceErrorReportsNonText() {
-  // The name points to an object, not to text.  The error says the name must point to text.
-  expect(findReferenceError({ data: { a: 'fruit' } }, undefined, 'data')).toBe('`data` must point to text');
+// function assertFindReferenceErrorReportsNonText() {
+//   // The name points to an object, not to text.  The error says the name must point to text.
+//   expect(findReferenceError({ data: { a: 'fruit' } }, undefined, 'data')).toBe('`data` must point to text');
+// }
+// test('test_find_reference_error_reports_non_text', assertFindReferenceErrorReportsNonText);
+
+function assertFindReferenceErrorRefusesObject() {
+  // The name points to an object.  The error says the name must not point to an object or array.
+  expect(findReferenceError({ data: { a: 'fruit' } }, undefined, 'data')).toBe('`data` must not point to an object or array');
 }
-test('test_find_reference_error_reports_non_text', assertFindReferenceErrorReportsNonText);
+test('test_find_reference_error_refuses_object', assertFindReferenceErrorRefusesObject);
 
 function assertFindReferenceErrorReportsTextWithBackticks() {
   // The name points to text that has another backticked name.  The error says TypeSafe resolves only one level.
@@ -180,18 +249,42 @@ function assertReferenceToObjectIsListed() {
   // data is an object in the state. localValue is an object in the question.
   const state = { fruit: 'apple', data: { a: 'fruit' } };
   const questions = { dataCheck: { type: 'noul', localValue: { a: 'fruit' }, instructions: 'is `data` the same as `localValue`?', criteria: { true: "Yes, they're the same", false: 'No, they are different' } } };
-  // Both names get an error, because neither points to text.
-  expect(listUndefinedReferences(state, questions)).toEqual(['dataCheck: `data` must point to text', 'dataCheck: `localValue` must point to text']);
+  // Both names get an error, because neither may point to an object or array.
+  expect(listUndefinedReferences(state, questions)).toEqual(['dataCheck: `data` must not point to an object or array', 'dataCheck: `localValue` must not point to an object or array']);
 }
 test('test_reference_to_object_is_listed', assertReferenceToObjectIsListed);
 
-function assertReferenceFoundAtAnyDepthInStatePasses() {
+// function assertReferenceFoundAtAnyDepthInStatePasses() {
+//   // The state has text inside an object. The instructions name only the inner key.
+//   const questions = { q: { type: 'noul', instructions: 'say `text`' } };
+//   // The name is found at depth, so no name is listed.
+//   expect(listUndefinedReferences({ message: { text: 'hi' } }, questions)).toEqual([]);
+// }
+// test('test_reference_found_at_any_depth_in_state_passes', assertReferenceFoundAtAnyDepthInStatePasses);
+
+function assertReferenceToNestedStateKeyWithoutParentPathIsListed() {
   // The state has text inside an object. The instructions name only the inner key.
   const questions = { q: { type: 'noul', instructions: 'say `text`' } };
-  // The name is found at depth, so no name is listed.
+  // The inner key alone is not in the state's top level, so the name is listed.
+  expect(listUndefinedReferences({ message: { text: 'hi' } }, questions)).toEqual(['q: `text` is not in state or in this question']);
+}
+test('test_reference_to_nested_state_key_without_parent_path_is_listed', assertReferenceToNestedStateKeyWithoutParentPathIsListed);
+
+function assertReferenceToDottedStatePathPasses() {
+  // The state has text inside an object. The instructions name the full dotted path.
+  const questions = { q: { type: 'noul', instructions: 'say `message.text`' } };
+  // The dotted path is found, so no name is listed.
   expect(listUndefinedReferences({ message: { text: 'hi' } }, questions)).toEqual([]);
 }
-test('test_reference_found_at_any_depth_in_state_passes', assertReferenceFoundAtAnyDepthInStatePasses);
+test('test_reference_to_dotted_state_path_passes', assertReferenceToDottedStatePathPasses);
+
+function assertReferenceToNumberBooleanAndNullPasses() {
+  // The state has a number, a boolean and null. The instructions name all three.
+  const questions = { q: { type: 'noul', instructions: 'is `count` or `isOn` or `nothing` set?' } };
+  // None of the three is listed.
+  expect(listUndefinedReferences({ count: 3, isOn: true, nothing: null }, questions)).toEqual([]);
+}
+test('test_reference_to_number_boolean_and_null_passes', assertReferenceToNumberBooleanAndNullPasses);
 
 function assertBacktickedKeyIsListed() {
   // A criteria key is a backticked name.
@@ -200,3 +293,27 @@ function assertBacktickedKeyIsListed() {
   expect(listUndefinedReferences({ fruit: 'apple' }, questions)).toEqual(['choicetest.criteria.`fruit`: backticked names cannot be keys']);
 }
 test('test_backticked_key_is_listed', assertBacktickedKeyIsListed);
+
+function assertFindReferenceErrorAllowsEscapedBackticks() {
+  // The name points to text that has only escaped backticks.  No error: an escaped backtick is plain text.
+  expect(findReferenceError({ banana: 'say \\`hi\\`' }, undefined, 'banana')).toBeNull();
+}
+test('test_find_reference_error_allows_escaped_backticks', assertFindReferenceErrorAllowsEscapedBackticks);
+
+function assertFindReferenceErrorReportsUnescapedBacktick() {
+  // The name points to text that has a real backticked name.  The error says TypeSafe resolves only one level.
+  expect(findReferenceError({ banana: 'say `fruit`' }, undefined, 'banana')).toBe('`banana` points to text with backticks; TypeSafe resolves only one level');
+}
+test('test_find_reference_error_reports_unescaped_backtick', assertFindReferenceErrorReportsUnescapedBacktick);
+
+function assertCollectReferenceNamesSkipsEscapedBackticks() {
+  // The text has a word inside escaped backticks.  No name is found.
+  expect(collectReferenceNames('a \\`fruit\\` b')).toEqual([]);
+}
+test('test_collect_reference_names_skips_escaped_backticks', assertCollectReferenceNamesSkipsEscapedBackticks);
+
+function assertListBacktickedKeysSkipsEscapedBackticks() {
+  // A key has escaped backticks around a word.  No key is listed.
+  expect(listBacktickedKeys({ 'x\\`y\\`': 1 }, 'q')).toEqual([]);
+}
+test('test_list_backticked_keys_skips_escaped_backticks', assertListBacktickedKeysSkipsEscapedBackticks);
