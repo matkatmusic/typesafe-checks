@@ -41,6 +41,57 @@ export function findPathValue(root: unknown, path: string): PathLookup {
   return { isFound: true, value: current };
 }
 
+export function findNestedPathValue(root: unknown, path: string): PathLookup {
+  const rootLookup = findPathValue(root, path);
+  if (rootLookup.isFound)
+    return rootLookup;
+  if (typeof root !== 'object')
+    return { isFound: false };
+  if (root === null)
+    return { isFound: false };
+  for (const childValue of Object.values(root)) {
+    const childLookup = findNestedPathValue(childValue, path);
+    if (childLookup.isFound)
+      return childLookup;
+  }
+  return { isFound: false };
+}
+
+export function findReferenceValue(state: unknown, question: unknown, name: string): PathLookup {
+  const stateLookup = findNestedPathValue(state, name);
+  if (stateLookup.isFound)
+    return stateLookup;
+  return findNestedPathValue(question, name);
+}
+
+export function findReferenceError(state: unknown, question: unknown, name: string): string | null {
+  const referenceLookup = findReferenceValue(state, question, name);
+  if (!referenceLookup.isFound)
+    return `\`${name}\` is not in state or in this question`;
+  if (typeof referenceLookup.value !== 'string')
+    return `\`${name}\` must point to text`;
+  if (referenceLookup.value.includes('`'))
+    return `\`${name}\` points to text with backticks; TypeSafe resolves only one level`;
+  return null;
+}
+
+export function listBacktickedKeys(value: unknown, path: string): string[] {
+  const errors: string[] = [];
+  if (typeof value !== 'object')
+    return errors;
+  if (value === null)
+    return errors;
+  for (const [key, childValue] of Object.entries(value)) {
+    const childPath = Array.isArray(value) ? `${path}[${key}]` : `${path}.${key}`;
+    // search() ignores lastIndex, so the global REFERENCE_PATTERN is safe here.
+    const hasBacktickedName = key.search(REFERENCE_PATTERN) !== -1;
+    if (hasBacktickedName)
+      errors.push(`${childPath}: backticked names cannot be keys`);
+    errors.push(...listBacktickedKeys(childValue, childPath));
+  }
+  return errors;
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (typeof value !== 'object')
     return false;
@@ -180,24 +231,34 @@ export function collectReferenceNames(value: unknown): string[] {
   return names;
 }
 
-function isReferenceDefined(state: unknown, instructions: unknown, name: string): boolean {
-  const stateLookup = findPathValue(state, name);
-  if (stateLookup.isFound)
-    return true;
-  const instructionsLookup = findPathValue(instructions, name);
-  return instructionsLookup.isFound;
-}
+// function isReferenceDefined(state: unknown, instructions: unknown, name: string): boolean {
+//   const stateLookup = findPathValue(state, name);
+//   if (stateLookup.isFound)
+//     return true;
+//   const instructionsLookup = findPathValue(instructions, name);
+//   return instructionsLookup.isFound;
+// }
 
 export function listUndefinedReferences(state: unknown, questions: Record<string, unknown>): string[] {
   const errors: string[] = [];
   for (const [questionName, question] of Object.entries(questions)) {
-    const { instructions, criteria } = question as { instructions?: unknown; criteria?: unknown };
-    const names = [...collectReferenceNames(instructions), ...collectReferenceNames(criteria)];
-    for (const name of names) {
-      const isDefined = isReferenceDefined(state, instructions, name);
-      if (!isDefined)
-        errors.push(`${questionName}: \`${name}\` is not in state or in its instructions`);
+    for (const name of collectReferenceNames(question)) {
+      const referenceError = findReferenceError(state, question, name);
+      if (referenceError !== null)
+        errors.push(`${questionName}: ${referenceError}`);
     }
+    errors.push(...listBacktickedKeys(question, questionName));
   }
   return errors;
+  // const errors: string[] = [];
+  // for (const [questionName, question] of Object.entries(questions)) {
+  //   const { instructions, criteria } = question as { instructions?: unknown; criteria?: unknown };
+  //   const names = [...collectReferenceNames(instructions), ...collectReferenceNames(criteria)];
+  //   for (const name of names) {
+  //     const isDefined = isReferenceDefined(state, instructions, name);
+  //     if (!isDefined)
+  //       errors.push(`${questionName}: \`${name}\` is not in state or in its instructions`);
+  //   }
+  // }
+  // return errors;
 }
