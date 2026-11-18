@@ -21,8 +21,8 @@ function assertFindReferenceErrorPassesNull() {
 test('test_find_reference_error_passes_null', assertFindReferenceErrorPassesNull);
 
 function assertFindReferenceErrorRefusesArray() {
-    // The name points to a list.  The error says the name must not point to an object or array.
-    expect(findReferenceError({ items: ['a'] }, undefined, 'items')).toBe('`items` must not point to an object or array');
+    // The name points to a list.  No error.
+    expect(findReferenceError({ items: ['a'] }, undefined, 'items')).toBeNull();
 }
 test('test_find_reference_error_refuses_array', assertFindReferenceErrorRefusesArray);
 
@@ -45,8 +45,8 @@ function assertFindReferenceErrorReportsMissingName() {
 test('test_find_reference_error_reports_missing_name', assertFindReferenceErrorReportsMissingName);
 
 function assertFindReferenceErrorRefusesObject() {
-    // The name points to an object.  The error says the name must not point to an object or array.
-    expect(findReferenceError({ data: { a: 'fruit' } }, undefined, 'data')).toBe('`data` must not point to an object or array');
+    // The name points to an object.  No error.
+    expect(findReferenceError({ data: { a: 'fruit' } }, undefined, 'data')).toBeNull();
 }
 test('test_find_reference_error_refuses_object', assertFindReferenceErrorRefusesObject);
 

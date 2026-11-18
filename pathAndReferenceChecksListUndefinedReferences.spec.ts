@@ -72,8 +72,8 @@ function assertReferenceToObjectIsListed() {
     // data is an object in the state. localValue is an object in the question.
     const state = { fruit: 'apple', data: { a: 'fruit' } };
     const questions = { dataCheck: { type: 'noul', localValue: { a: 'fruit' }, instructions: 'is `data` the same as `localValue`?', criteria: { true: "Yes, they're the same", false: 'No, they are different' } } };
-    // Both names get an error, because neither may point to an object or array.
-    expect(listUndefinedReferences(state, questions)).toEqual(['dataCheck: `data` must not point to an object or array', 'dataCheck: `localValue` must not point to an object or array']);
+    // No name gets an error, because a name may point to an object or array.
+    expect(listUndefinedReferences(state, questions)).toEqual([]);
 }
 test('test_reference_to_object_is_listed', assertReferenceToObjectIsListed);
 

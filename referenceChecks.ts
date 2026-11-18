@@ -23,10 +23,11 @@ export function findReferenceError(state: unknown, question: unknown, name: stri
     const referenceLookup = findReferenceValue(state, question, name);
     if (!referenceLookup.isFound)
         return `\`${name}\` is not in state or in this question`;
-    if (typeof referenceLookup.value === 'object') {
-        if (referenceLookup.value !== null)
-            return `\`${name}\` must not point to an object or array`;
-    }
+    // Disabled (#136-#140): docs.typesafe.ai allows back-ticked names to point to objects and arrays (resume cookbook `potential_duplicate`).
+    // if (typeof referenceLookup.value === 'object') {
+    //     if (referenceLookup.value !== null)
+    //         return `\`${name}\` must not point to an object or array`;
+    // }
     // if (typeof referenceLookup.value === 'string') {
     //     const hasUnescapedBacktick = containsUnescapedBacktick(referenceLookup.value);
     //     if (hasUnescapedBacktick)

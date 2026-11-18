@@ -14,8 +14,8 @@ function validateMissingNameGivesError() {
 }
 
 function validateObjectTargetGivesError() {
-    // Step: a name points to an object.  Step: the object error shows.
-    expect(findReferenceError({ a: { b: 1 } }, {}, 'a')).toBe('`a` must not point to an object or array');
+    // Step: a name points to an object.  Step: no error shows.
+    expect(findReferenceError({ a: { b: 1 } }, {}, 'a')).toBeNull();
 }
 
 function validateBacktickInTargetTextGivesNoError() {
@@ -50,6 +50,24 @@ function validateUnknownReferenceHasQuestionName() {
     expect(listUndefinedReferences({}, { q1: 'use `nope`' })).toEqual(['q1: `nope` is not in state or in this question']);
 }
 
+function validateReferenceToOwnInstructionsArrayGivesNoError() {
+    // Step: the state holds agentReply.  Step: the question's instructions hold an exclusions array, and the question points at it.
+    const state = { agentReply: 'Which file do you want?' };
+    const question = { type: 'noul', instructions: { background: 'bg', exclusions: ['a status sentence'], question: 'Accounting for the choices in `exclusions`, Is a question or choice for the user written in `agentReply`? ' }, criteria: { true: 'YES', false: 'NO' } };
+    // Step: no error shows, because a name may point to an array.
+    expect(listUndefinedReferences(state, { questionOrChoiceV3: question })).toEqual([]);
+}
+
+function validateReferenceToStateArrayGivesNoError() {
+    // Step: the state holds a charges array and a customer object.  Step: a question points at both.
+    const state = { order: { charges: [1, 2] }, customer: { name: 'Ann' } };
+    const question = { type: 'noul', instructions: 'Are `order.charges` fine for `customer`?' };
+    // Step: no error shows, because a name may point to an array or an object.
+    expect(listUndefinedReferences(state, { q: question })).toEqual([]);
+}
+
+test('test_reference_to_own_instructions_array_gives_no_error', validateReferenceToOwnInstructionsArrayGivesNoError);
+test('test_reference_to_state_array_gives_no_error', validateReferenceToStateArrayGivesNoError);
 test('test_state_value_wins_over_question_value', validateStateValueWinsOverQuestionValue);
 test('test_missing_name_gives_error', validateMissingNameGivesError);
 test('test_object_target_gives_error', validateObjectTargetGivesError);
