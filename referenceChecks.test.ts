@@ -18,9 +18,16 @@ function validateObjectTargetGivesError() {
     expect(findReferenceError({ a: { b: 1 } }, {}, 'a')).toBe('`a` must not point to an object or array');
 }
 
-function validateBacktickInTargetTextGivesError() {
-    // Step: a name points to text with an unescaped backtick.  Step: the backtick error shows.
-    expect(findReferenceError({ a: 'hi `x`' }, {}, 'a')).toBe('`a` points to text with backticks; TypeSafe resolves only one level');
+function validateBacktickInTargetTextGivesNoError() {
+    // Step: a name points to text with an unescaped backtick.  Step: no error shows.
+    expect(findReferenceError({ a: 'hi `x`' }, {}, 'a')).toBeNull();
+}
+
+function validateStateValueWithBacktickedTableCellGivesNoError() {
+    // Step: the state holds an earlier assistant message with `sms.xml` in backticks.
+    const state = { earlierAssistantMessage: '| file | note |\n| `sms.xml` | backup |' };
+    // Step: a question points at that message.  Step: no error shows, because state values are not checked for backticks.
+    expect(findReferenceError(state, {}, 'earlierAssistantMessage')).toBeNull();
 }
 
 function validateEscapedBacktickInTargetTextGivesNoError() {
@@ -46,7 +53,8 @@ function validateUnknownReferenceHasQuestionName() {
 test('test_state_value_wins_over_question_value', validateStateValueWinsOverQuestionValue);
 test('test_missing_name_gives_error', validateMissingNameGivesError);
 test('test_object_target_gives_error', validateObjectTargetGivesError);
-test('test_backtick_in_target_text_gives_error', validateBacktickInTargetTextGivesError);
+test('test_backtick_in_target_text_gives_no_error', validateBacktickInTargetTextGivesNoError);
+test('test_state_value_with_backticked_table_cell_gives_no_error', validateStateValueWithBacktickedTableCellGivesNoError);
 test('test_escaped_backtick_in_target_text_gives_no_error', validateEscapedBacktickInTargetTextGivesNoError);
 test('test_backticked_key_gives_error', validateBacktickedKeyGivesError);
 test('test_nested_names_are_collected', validateNestedNamesAreCollected);

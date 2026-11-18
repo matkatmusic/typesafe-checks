@@ -50,11 +50,11 @@ function assertFindReferenceErrorRefusesObject() {
 }
 test('test_find_reference_error_refuses_object', assertFindReferenceErrorRefusesObject);
 
-function assertFindReferenceErrorReportsTextWithBackticks() {
-    // The name points to text that has another backticked name.  The error says TypeSafe resolves only one level.
-    expect(findReferenceError({ banana: '`fruit`' }, undefined, 'banana')).toBe('`banana` points to text with backticks; TypeSafe resolves only one level');
+function assertFindReferenceErrorAllowsTextWithBackticks() {
+    // The name points to text that has another backticked name.  No error: state values are not checked for backticks.
+    expect(findReferenceError({ banana: '`fruit`' }, undefined, 'banana')).toBeNull();
 }
-test('test_find_reference_error_reports_text_with_backticks', assertFindReferenceErrorReportsTextWithBackticks);
+test('test_find_reference_error_allows_text_with_backticks', assertFindReferenceErrorAllowsTextWithBackticks);
 
 function assertFindReferenceErrorAllowsEscapedBackticks() {
     // The name points to text that has only escaped backticks.  No error: an escaped backtick is plain text.
@@ -62,8 +62,8 @@ function assertFindReferenceErrorAllowsEscapedBackticks() {
 }
 test('test_find_reference_error_allows_escaped_backticks', assertFindReferenceErrorAllowsEscapedBackticks);
 
-function assertFindReferenceErrorReportsUnescapedBacktick() {
-    // The name points to text that has a real backticked name.  The error says TypeSafe resolves only one level.
-    expect(findReferenceError({ banana: 'say `fruit`' }, undefined, 'banana')).toBe('`banana` points to text with backticks; TypeSafe resolves only one level');
+function assertFindReferenceErrorAllowsUnescapedBacktick() {
+    // The name points to text that has a real backticked name.  No error: state values are not checked for backticks.
+    expect(findReferenceError({ banana: 'say `fruit`' }, undefined, 'banana')).toBeNull();
 }
-test('test_find_reference_error_reports_unescaped_backtick', assertFindReferenceErrorReportsUnescapedBacktick);
+test('test_find_reference_error_allows_unescaped_backtick', assertFindReferenceErrorAllowsUnescapedBacktick);

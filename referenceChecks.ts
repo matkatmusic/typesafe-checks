@@ -12,11 +12,12 @@ export function findReferenceValue(state: unknown, question: unknown, name: stri
     return findNestedPathValue(question, name);
 }
 
-function containsUnescapedBacktick(text: string): boolean {
-    const unescapedBacktick = /(?<!\\)`/;
-    const isMatch = unescapedBacktick.test(text);
-    return isMatch;
-}
+// Disabled (#132/#134): the docs never say backticks inside state values are resolved, so state values are not checked.
+// function containsUnescapedBacktick(text: string): boolean {
+//     const unescapedBacktick = /(?<!\\)`/;
+//     const isMatch = unescapedBacktick.test(text);
+//     return isMatch;
+// }
 
 export function findReferenceError(state: unknown, question: unknown, name: string): string | null {
     const referenceLookup = findReferenceValue(state, question, name);
@@ -26,11 +27,11 @@ export function findReferenceError(state: unknown, question: unknown, name: stri
         if (referenceLookup.value !== null)
             return `\`${name}\` must not point to an object or array`;
     }
-    if (typeof referenceLookup.value === 'string') {
-        const hasUnescapedBacktick = containsUnescapedBacktick(referenceLookup.value);
-        if (hasUnescapedBacktick)
-            return `\`${name}\` points to text with backticks; TypeSafe resolves only one level`;
-    }
+    // if (typeof referenceLookup.value === 'string') {
+    //     const hasUnescapedBacktick = containsUnescapedBacktick(referenceLookup.value);
+    //     if (hasUnescapedBacktick)
+    //         return `\`${name}\` points to text with backticks; TypeSafe resolves only one level`;
+    // }
     return null;
 }
 

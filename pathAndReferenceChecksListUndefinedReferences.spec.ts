@@ -54,7 +54,7 @@ function assertReferenceDeclaredInOtherQuestionIsListed() {
 }
 test('test_reference_declared_in_other_question_is_listed', assertReferenceDeclaredInOtherQuestionIsListed);
 
-function assertReferenceToTextWithBackticksIsListed() {
+function assertReferenceToTextWithBackticksIsNotListed() {
     // The instructions declare banana as text that has another backticked name.
     const questions = {
         scopeDeclarationInInstructions: {
@@ -63,10 +63,10 @@ function assertReferenceToTextWithBackticksIsListed() {
             criteria: { Yes: 'yes they are the same word', no: 'no they are different words', 'something else': 'cannot determine' },
         },
     };
-    // Only banana gets an error. fruit points to plain text.
-    expect(listUndefinedReferences({ fruit: 'apple' }, questions)).toEqual(['scopeDeclarationInInstructions: `banana` points to text with backticks; TypeSafe resolves only one level']);
+    // No name gets an error. banana points to question text, and backticks in it are not checked.
+    expect(listUndefinedReferences({ fruit: 'apple' }, questions)).toEqual([]);
 }
-test('test_reference_to_text_with_backticks_is_listed', assertReferenceToTextWithBackticksIsListed);
+test('test_reference_to_text_with_backticks_is_not_listed', assertReferenceToTextWithBackticksIsNotListed);
 
 function assertReferenceToObjectIsListed() {
     // data is an object in the state. localValue is an object in the question.
