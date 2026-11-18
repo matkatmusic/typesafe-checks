@@ -185,11 +185,6 @@ function assertFindReferenceErrorReportsMissingName() {
 }
 test('test_find_reference_error_reports_missing_name', assertFindReferenceErrorReportsMissingName);
 
-// function assertFindReferenceErrorReportsNonText() {
-//   // The name points to an object, not to text.  The error says the name must point to text.
-//   expect(findReferenceError({ data: { a: 'fruit' } }, undefined, 'data')).toBe('`data` must point to text');
-// }
-// test('test_find_reference_error_reports_non_text', assertFindReferenceErrorReportsNonText);
 
 function assertFindReferenceErrorRefusesObject() {
   // The name points to an object.  The error says the name must not point to an object or array.
@@ -254,13 +249,6 @@ function assertReferenceToObjectIsListed() {
 }
 test('test_reference_to_object_is_listed', assertReferenceToObjectIsListed);
 
-// function assertReferenceFoundAtAnyDepthInStatePasses() {
-//   // The state has text inside an object. The instructions name only the inner key.
-//   const questions = { q: { type: 'noul', instructions: 'say `text`' } };
-//   // The name is found at depth, so no name is listed.
-//   expect(listUndefinedReferences({ message: { text: 'hi' } }, questions)).toEqual([]);
-// }
-// test('test_reference_found_at_any_depth_in_state_passes', assertReferenceFoundAtAnyDepthInStatePasses);
 
 function assertReferenceToNestedStateKeyWithoutParentPathIsListed() {
   // The state has text inside an object. The instructions name only the inner key.

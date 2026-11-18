@@ -1,4 +1,3 @@
-// export const REFERENCE_PATTERN =/`([^`\s.]+(?:\.[^`\s.]+)*)`/g;
 // ponytail: a literal backslash then a real backtick (`\\` + backtick in the parsed value) counts as escaped.
 export const REFERENCE_PATTERN = /(?<!\\)`([^`\s.]+(?:\.[^`\s.]+)*)`/g;
 const UNESCAPED_BACKTICK = /(?<!\\)`/;
@@ -61,7 +60,6 @@ export function findNestedPathValue(root: unknown, path: string): PathLookup {
 }
 
 export function findReferenceValue(state: unknown, question: unknown, name: string): PathLookup {
-  // const stateLookup = findNestedPathValue(state, name);
   const stateLookup = findPathValue(state, name);
   if (stateLookup.isFound)
     return stateLookup;
@@ -72,14 +70,11 @@ export function findReferenceError(state: unknown, question: unknown, name: stri
   const referenceLookup = findReferenceValue(state, question, name);
   if (!referenceLookup.isFound)
     return `\`${name}\` is not in state or in this question`;
-  // if (typeof referenceLookup.value !== 'string')
-  //   return `\`${name}\` must point to text`;
   if (typeof referenceLookup.value === 'object') {
     if (referenceLookup.value !== null)
       return `\`${name}\` must not point to an object or array`;
   }
   if (typeof referenceLookup.value === 'string') {
-    // if (referenceLookup.value.includes('`'))
     if (UNESCAPED_BACKTICK.test(referenceLookup.value))
       return `\`${name}\` points to text with backticks; TypeSafe resolves only one level`;
   }
@@ -242,13 +237,6 @@ export function collectReferenceNames(value: unknown): string[] {
   return names;
 }
 
-// function isReferenceDefined(state: unknown, instructions: unknown, name: string): boolean {
-//   const stateLookup = findPathValue(state, name);
-//   if (stateLookup.isFound)
-//     return true;
-//   const instructionsLookup = findPathValue(instructions, name);
-//   return instructionsLookup.isFound;
-// }
 
 export function listUndefinedReferences(state: unknown, questions: Record<string, unknown>): string[] {
   const errors: string[] = [];
@@ -261,15 +249,4 @@ export function listUndefinedReferences(state: unknown, questions: Record<string
     errors.push(...listBacktickedKeys(question, questionName));
   }
   return errors;
-  // const errors: string[] = [];
-  // for (const [questionName, question] of Object.entries(questions)) {
-  //   const { instructions, criteria } = question as { instructions?: unknown; criteria?: unknown };
-  //   const names = [...collectReferenceNames(instructions), ...collectReferenceNames(criteria)];
-  //   for (const name of names) {
-  //     const isDefined = isReferenceDefined(state, instructions, name);
-  //     if (!isDefined)
-  //       errors.push(`${questionName}: \`${name}\` is not in state or in its instructions`);
-  //   }
-  // }
-  // return errors;
 }
